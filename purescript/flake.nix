@@ -15,7 +15,7 @@
     in
     utils.apply-systems
       { inherit inputs systems; }
-      ({ system, pkgs, ... }:
+      ({ system, pkgs, ps-tools, ... }:
         let
           purs-nix = inputs.purs-nix { inherit system; };
           ps = purs-nix.purs
