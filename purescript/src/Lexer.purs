@@ -1,10 +1,7 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Lexer
-  ( token,
-    parseLine,
-    Token (..),
+  ( Token (..)
+  , token
+  , parseLine
   )
 where
 
@@ -19,10 +16,8 @@ import Parser
     manyTill,
     peek,
     satisfy,
-    skipWhile,
+    skipWhile
   )
-import Relude.Unsafe qualified as Unsafe
-import Prelude hiding (many, takeWhile)
 
 data Token
   = Ident String
@@ -49,9 +44,12 @@ data Token
   | Return
   | EqSymbol
   | NotEqSymbol
-  deriving (Show, Eq)
 
-parseLine :: ParserT Char Void [Token]
+derive instance Eq Token
+instance Show Token where
+  show = genericShow
+
+parseLine :: ParserT Char Void (List Token)
 parseLine = do
   manyTill
     (skipWhile (\s -> s == ' ') *> token <* skipWhile (\s -> s == ' '))

@@ -27,10 +27,19 @@
                 with purs-nix.ps-pkgs;
                 [
                   prelude
+                  control
                   effect
                   aff
+                  transformers
+                  foldable-traversable
+                  maybe
+                  either
+                  tuples
+                  lists
+                  strings
                   console
                   spec
+                  unicode
                 ];
               # FFI dependencies
               # foreign.Main.node_modules = [];
