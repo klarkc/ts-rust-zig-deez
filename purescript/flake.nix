@@ -45,7 +45,7 @@
                     ps-command
                     # optional devShell tools
                     ps-tools.for-0_15.purescript-language-server
-                    ps-tools.purs-tidy
+                    ps-tools.purty
                   ];
               };
         });
