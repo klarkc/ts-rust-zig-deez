@@ -1,57 +1,65 @@
 {
-  description = "Monkey Lang Interpreter";
+  inputs = {
+    purs-nix.url = "github:purs-nix/purs-nix";
+    nixpkgs.follows = "purs-nix/nixpkgs";
+    utils.url = "github:ursi/flake-utils";
+    # optional
+    ps-tools.follows = "purs-nix/ps-tools";
+  };
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/30f8cac903a4c968fa2d5d1c99dd8c67dd716456";
-
-  outputs = { self, nixpkgs }:
+  outputs = { self, utils, ... }@inputs:
     let
-      forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
-      nixpkgsFor = forAllSystems (system: import nixpkgs {
-        inherit system;
-        overlays = [ self.overlay ];
-      });
+      # TODO add missing arm to match standard systems
+      #  right now purs-nix is only compatible with x86_64-linux
+      systems = [ "x86_64-linux" ];
     in
-    {
-      overlay = self: super: {
-        hsPkgs = super.haskell.packages.ghc944.override {
-          overrides = hself: hsuper: {
-            ghcid = super.haskell.lib.dontCheck hsuper.ghcid;
-          };
-        };
-        haskell-src = self.hsPkgs.callCabal2nix "haskell-src" ./. { };
-      };
-
-      packages = forAllSystems (system:
+    utils.apply-systems
+      { inherit inputs systems; }
+      ({ system, pkgs, ... }:
         let
-          pkgs = nixpkgsFor.${system};
+          purs-nix = inputs.purs-nix { inherit system; };
+          ps = purs-nix.purs
+            {
+              # Project dir (src, test)
+              dir = ./.;
+              # Dependencies
+              dependencies =
+                with purs-nix.ps-pkgs;
+                [
+                  prelude
+                ];
+              # FFI dependencies
+              # foreign.Main.node_modules = [];
+            };
+          ps-command = ps.command { };
         in
         {
-          haskell-src = pkgs.haskell-src;
+          packages.default = ps.output { };
+
+          devShells.default =
+            pkgs.mkShell
+              {
+                packages =
+                  with pkgs;
+                  [
+                    ps-command
+                    # optional devShell tools
+                    ps-tools.for-0_15.purescript-language-server
+                    ps-tools.purs-tidy
+                  ];
+              };
         });
 
-      devShells = forAllSystems (system:
-        let
-          pkgs = nixpkgsFor.${system};
-          libs = with pkgs; [
-            zlib
-          ];
-        in
-        {
-          default = pkgs.hsPkgs.shellFor {
-            packages = hsPkgs: [ ];
-            buildInputs = with pkgs; [
-              hsPkgs.cabal-install
-              hsPkgs.cabal-fmt
-              hsPkgs.ghcid
-              hsPkgs.ghc
-              ormolu
-              nixpkgs-fmt
-              hsPkgs.cabal-fmt
-              treefmt
-            ] ++ libs;
-            shellHook = "export PS1='[$PWD]\n❄ '";
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath libs;
-          };
-        });
-    };
+  # --- Flake Local Nix Configuration ----------------------------
+  nixConfig = {
+    # This sets the flake to use nix cache.
+    # Nix should ask for permission before using it,
+    # but remove it here if you do not want it to.
+    extra-substituters = [
+      "https://klarkc.cachix.org?priority=99"
+    ];
+    extra-trusted-public-keys = [
+      "klarkc.cachix.org-1:R+z+m4Cq0hMgfZ7AQ42WRpGuHJumLLx3k0XhwpNFq9U="
+    ];
+  };
 }
